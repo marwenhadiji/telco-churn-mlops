@@ -18,7 +18,8 @@ numpy>=1.21.0               # Calculs numériques
 scikit-learn>=1.0.0         # ML models
 imbalanced-learn>=0.8.0     # SMOTE pour déséquilibre
 xgboost>=1.5.0              # XGBoost models
-mlflow>=2.12.1              # Tracking expériences
+mlflow==2.12.1
+mlflow-skinny==2.12.1
 
 # ===== Azure ML MLflow Integration =====
 azureml-mlflow>=1.50.0      # Intégration MLflow avec Azure ML
