@@ -7,6 +7,8 @@ Utilisation:
     python 02_deploy_mlclient.py --endpoint-name telco-churn-endpoint-v6 --region norwayeast
 """
 import sys
+import re
+import re
 import argparse
 from pathlib import Path
 from azure.ai.ml import MLClient
@@ -151,7 +153,24 @@ def create_deployment(ml_client, endpoint_name, deployment_config_path):
         logger.info(f"Configuration chargée depuis: {deployment_config_path}")
         
         deployment_name = config.get('name', 'xgboost-deployment')
-        model_reference = config.get('model', 'azureml:Telco_Churn_XGBoost@latest')
+        raw_model_reference = config.get('model', 'azureml:Telco_Churn_XGBoost@latest')
+
+        # Résoudre "azureml:<name>@latest" ou "azureml:<name>@<version>" en un vrai
+        # asset ID, car le SDK Python (contrairement à la CLI) ne parse pas cette
+        # syntaxe automatiquement quand elle est passée comme chaîne brute.
+        match = re.match(r'^azureml:(?P<name>[^@]+)@(?P<label_or_version>.+)$', raw_model_reference)
+        if match:
+            model_name = match.group('name')
+            label_or_version = match.group('label_or_version')
+            if label_or_version == 'latest':
+                resolved_model = ml_client.models.get(name=model_name, label='latest')
+            else:
+                resolved_model = ml_client.models.get(name=model_name, version=label_or_version)
+            model_reference = resolved_model.id
+            logger.info(f"Modèle résolu: {raw_model_reference} -> {model_reference}")
+        else:
+            # Déjà un ID complet ou un autre format, on le passe tel quel
+            model_reference = raw_model_reference
         instance_type = config.get('instance_type', 'Standard_DS2_v2')
         instance_count = config.get('instance_count', 1)
         
