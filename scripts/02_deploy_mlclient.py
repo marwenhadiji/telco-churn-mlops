@@ -12,7 +12,7 @@ import re
 import argparse
 from pathlib import Path
 from azure.ai.ml import MLClient
-from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Environment, CodeConfiguration
+from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Environment, CodeConfiguration, OnlineRequestSettings
 from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
 import yaml
 import logging
@@ -220,11 +220,11 @@ def create_deployment(ml_client, endpoint_name, deployment_config_path):
             instance_type=instance_type,
             instance_count=instance_count,
             app_insights_enabled=True,  # Activer les diagnostics
-            request_settings={
-                "request_timeout_ms": 60000,
-                "max_concurrent_requests_per_instance": 1,
-                "max_queue_wait_ms": 500,
-            }
+            request_settings=OnlineRequestSettings(
+                request_timeout_ms=60000,
+                max_concurrent_requests_per_instance=1,
+                max_queue_wait_ms=500,
+            )
         )
         
         logger.info(f"Envoi de la requête de déploiement au Resource Manager...")
