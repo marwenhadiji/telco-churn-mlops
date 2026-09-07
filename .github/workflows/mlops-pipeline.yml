@@ -1,0 +1,78 @@
+name: MLOps Pipeline - Train and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # permet aussi de le lancer manuellement depuis GitHub
+
+env:
+  RESOURCE_GROUP: rg-mlops-final
+  WORKSPACE_NAME: churn
+  ENDPOINT_NAME: telco-churn-endpoint-v7
+  DEPLOYMENT_NAME: xgboost-deployment
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Installer les dépendances Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Connexion à Azure (OIDC, sans secret client)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Installer l'extension Azure ML CLI
+        run: az extension add -n ml -y
+
+      - name: Récupérer l'URI de tracking MLflow du workspace
+        run: |
+          TRACKING_URI=$(az ml workspace show \
+            --resource-group $RESOURCE_GROUP \
+            --name $WORKSPACE_NAME \
+            --query mlflow_tracking_uri -o tsv)
+          echo "MLFLOW_TRACKING_URI=$TRACKING_URI" >> $GITHUB_ENV
+
+      - name: Préparation des données
+        run: python src/prep.py
+
+      - name: Entraînement et enregistrement du modèle (MLflow -> Azure ML Registry)
+        run: python src/train.py
+
+      - name: Mettre à jour le déploiement (charge automatiquement la dernière version du modèle)
+        run: |
+          az ml online-deployment update \
+            -f azureml/deployment.yml \
+            --resource-group $RESOURCE_GROUP \
+            --workspace-name $WORKSPACE_NAME
+
+      - name: Test de fumée sur l'endpoint
+        run: |
+          SCORING_URI=$(az ml online-endpoint show \
+            --name $ENDPOINT_NAME \
+            --resource-group $RESOURCE_GROUP \
+            --workspace-name $WORKSPACE_NAME \
+            --query scoring_uri -o tsv)
+          KEY=$(az ml online-endpoint get-credentials \
+            --name $ENDPOINT_NAME \
+            --resource-group $RESOURCE_GROUP \
+            --workspace-name $WORKSPACE_NAME \
+            --query primaryKey -o tsv)
+          curl -f -X POST "$SCORING_URI" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            -d @test_payload.json
