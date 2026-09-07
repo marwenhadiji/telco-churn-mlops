@@ -13,7 +13,7 @@ env:
 
 jobs:
   train-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout du code
@@ -24,17 +24,13 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Installer les dépendances Python
+      - name: Installer les dépendances Python (entraînement + déploiement)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r scripts/requirements.txt
 
-      - name: Connexion à Azure (OIDC, sans secret client)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Connexion Azure via identité managée
+        run: az login --identity
 
       - name: Installer l'extension Azure ML CLI
         run: az extension add -n ml -y
@@ -53,12 +49,11 @@ jobs:
       - name: Entraînement et enregistrement du modèle (MLflow -> Azure ML Registry)
         run: python src/train.py
 
-      - name: Mettre à jour le déploiement (charge automatiquement la dernière version du modèle)
+      - name: Déployer via le script SDK existant (scripts/02_deploy_mlclient.py)
         run: |
-          az ml online-deployment update \
-            -f azureml/deployment.yml \
-            --resource-group $RESOURCE_GROUP \
-            --workspace-name $WORKSPACE_NAME
+          python scripts/02_deploy_mlclient.py \
+            --endpoint-name $ENDPOINT_NAME \
+            --region norwayeast
 
       - name: Test de fumée sur l'endpoint
         run: |
