@@ -1,0 +1,14 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: xgboost-deployment
+endpoint_name: telco-churn-endpoint-v7
+model: azureml:Telco_Churn_XGBoost@latest
+code_configuration:
+  code: ../src
+  scoring_script: score.py
+environment:
+  name: churn-inference-env
+  version: 4
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: ../conda.yml
+instance_type: Standard_DS2_v2
+instance_count: 1
