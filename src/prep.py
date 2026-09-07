@@ -2,10 +2,10 @@ import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-def prepare_data():
+def prepare_data(raw_path="data/WA_Fn-UseC_-Telco-Customer-Churn.csv",
+                  output_dir="data/processed"):
     print("🔄 Chargement des données...")
-    raw_path = "data/WA_Fn-UseC_-Telco-Customer-Churn.csv"
-    
+
     if not os.path.exists(raw_path):
         raise FileNotFoundError(f"Le fichier {raw_path} n'a pas été trouvé !")
 
@@ -28,11 +28,12 @@ def prepare_data():
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['Churn'])
 
     # Sauvegarde des fichiers préparés
-    os.makedirs("data/processed", exist_ok=True)
-    train_df.to_csv("data/processed/train.csv", index=False)
-    test_df.to_csv("data/processed/test.csv", index=False)
+    os.makedirs(output_dir, exist_ok=True)
+    train_df.to_csv(os.path.join(output_dir, "train.csv"), index=False)
+    test_df.to_csv(os.path.join(output_dir, "test.csv"), index=False)
 
     print(f"✅ Préparation terminée ! Train: {train_df.shape}, Test: {test_df.shape}")
+    return train_df, test_df
 
 if __name__ == "__main__":
     prepare_data()

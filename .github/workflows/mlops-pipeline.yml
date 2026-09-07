@@ -29,6 +29,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r scripts/requirements.txt
 
+      - name: Exécuter les tests unitaires
+        run: pytest tests/ -v
+
       - name: Connexion Azure via identité managée
         run: az login --identity
 
