@@ -155,15 +155,20 @@ def create_deployment(ml_client, endpoint_name, deployment_config_path):
         instance_type = config.get('instance_type', 'Standard_DS2_v2')
         instance_count = config.get('instance_count', 1)
         
+        # Résoudre les chemins relatifs par rapport à l'emplacement de deployment.yml,
+        # pas par rapport au répertoire d'exécution courant (cwd)
+        config_dir = Path(deployment_config_path).parent
+
         # Configuration du code
         code_config = config.get('code_configuration', {})
-        code_path = code_config.get('code', '../src')
+        code_path = str((config_dir / code_config.get('code', '../src')).resolve())
         scoring_script = code_config.get('scoring_script', 'score.py')
         
         # Configuration de l'environnement
         env_config = config.get('environment', {})
         env_name = env_config.get('name', 'churn-inference-env')
         env_version = env_config.get('version', '1')
+        conda_file_path = str((config_dir / env_config.get('conda_file', '../conda.yml')).resolve())
         
         logger.info(f"Configuration du deployment:")
         logger.info(f"  - Nom: {deployment_name}")
@@ -183,7 +188,7 @@ def create_deployment(ml_client, endpoint_name, deployment_config_path):
             name=env_name,
             version=str(env_version),
             image=env_config.get('image', 'mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest'),
-            conda_file=env_config.get('conda_file', '../conda.yml')
+            conda_file=conda_file_path
         )
         
         # Créer le deployment
